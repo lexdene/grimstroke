@@ -53,6 +53,13 @@ class Scope:
     def declare_function(self, name: str):
         self._declared_functions.append(name)
 
+    def find_declare_scope(self, name: str):
+        if name in self._declared_functions:
+            return self
+
+        if self.outer_scope:
+            return self.outer_scope.find_declare_scope(name)
+
     @cached_property
     def full_name(self):
         if self.outer_scope:

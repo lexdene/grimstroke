@@ -1,9 +1,17 @@
-def func07():
-    def func08():
+def foo():
+    pass
+
+
+def bar():
+    pass
+
+
+def scope_function():
+    def foo():
         pass
 
-    def func09():
-        func08()
-        return
+    def baz():
+        foo()
+        bar()
 
-    return func09()
+    return baz()

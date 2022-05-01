@@ -24,13 +24,29 @@ def main(directory):
     modules = list(iter_modules(env))
     for m in modules:
         print(m)
+        callings = []
         for scope, node in iter_nodes_from_module(env, m):
             if is_func_call(node):
-                print('calling from %s to %s' % (
-                    scope.caller_name, get_calling_function_name(node)
-                ))
+                callee_name = get_calling_function_name(node)
+                callings.append((scope, callee_name))
             elif is_func_def(node):
-                print('define function %s' % (node.name))
+                func_name = node.name
+                print('define function %s' % func_name)
+                scope.declare_function(func_name)
+
+        for scope, callee_name in callings:
+            declare_scope = scope.find_declare_scope(callee_name)
+
+            if declare_scope:
+                callee_full_name = '%s:%s' % (
+                    declare_scope.full_name, callee_name
+                )
+            else:
+                callee_full_name = 'undefined(%s)' % callee_name
+
+            print('calling from %s to %s' % (
+                scope.caller_name, callee_full_name
+            ))
 
 
 def console_entry():
