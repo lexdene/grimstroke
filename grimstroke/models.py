@@ -22,24 +22,29 @@ class Module:
         return '<%s %s>' % (self.__class__.__name__, self.path)
 
 
+class ExternalModule:
+    def __init__(self, name):
+        self.name = name
+
+        self._ref_symbols = {}
+
+    @cached_property
+    def full_name(self):
+        return self.name
+
+    def find_symbol(self, name: str):
+        smb = Symbol(name=name, scope=self)
+        self._ref_symbols[name] = smb
+        return smb
+
+
 class Env:
     def __init__(self, directory):
         self.directory = directory
 
 
 class Collector:
-    def __init__(self):
-        self._declared_functions = []
-        self._calling_relations = []
-
-    def declare_function(self, full_name: str):
-        self._declared_functions.append(full_name)
-
-    def add_calling_relation(self, from_func: str, to_func: str):
-        self._calling_relations.append(CallingRelation(
-            from_func=from_func,
-            to_func=to_func
-        ))
+    pass
 
 
 class Scope:
@@ -48,17 +53,21 @@ class Scope:
         self.type = type
         self.outer_scope = outer_scope
 
-        self._declared_functions = []
+        self._symbols = {}
+
+    def add_symbol(self, name: str, symbol):
+        self._symbols[name] = symbol
 
     def declare_function(self, name: str):
-        self._declared_functions.append(name)
+        smb = Symbol(name=name, scope=self)
+        self.add_symbol(name, smb)
 
-    def find_declare_scope(self, name: str):
-        if name in self._declared_functions:
-            return self
+    def find_symbol(self, name: str):
+        if name in self._symbols:
+            return self._symbols[name]
 
         if self.outer_scope:
-            return self.outer_scope.find_declare_scope(name)
+            return self.outer_scope.find_symbol(name)
 
     @cached_property
     def full_name(self):
@@ -92,3 +101,13 @@ class Scope:
             name=name,
             type=ScopeType.module_body,
         )
+
+
+class Symbol:
+    def __init__(self, name: str, scope: Scope):
+        self.name = name
+        self.scope = scope
+
+    @cached_property
+    def full_name(self):
+        return '%s:%s' % (self.scope.full_name, self.name)

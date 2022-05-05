@@ -64,13 +64,27 @@ def is_func_def(node):
     return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
 
 
-def get_calling_function_name(node):
+def is_import(node):
+    return isinstance(node, ast.Import)
+
+
+def get_import_names(node):
+    return [
+        a.name for a in node.names
+    ]
+
+
+def get_symbol(scope, node):
     func = node.func
 
     if isinstance(func, ast.Name):
-        return func.id
+        name = func.id
+        return scope.find_symbol(name)
     elif isinstance(func, ast.Attribute):
-        return '%s.%s' % (func.value.id, func.attr)
+        name = func.value.id
+        sub_scope = scope.find_symbol(name)
+        sub_name = func.attr
+        return sub_scope.find_symbol(sub_name)
     else:
         raise ValueError(
             'cannot parse calling function node: %s' % ast.dump(node)

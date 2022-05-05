@@ -4,9 +4,10 @@ from argparse import ArgumentParser
 
 from .parser import (
     iter_nodes_from_module,
-    is_func_call, is_func_def, get_calling_function_name,
+    is_func_call, is_func_def,
+    is_import, get_symbol, get_import_names,
 )
-from .models import Module, Env
+from .models import Module, Env, ExternalModule
 
 
 def iter_modules(env):
@@ -27,26 +28,25 @@ def main(directory):
         callings = []
         for scope, node in iter_nodes_from_module(env, m):
             if is_func_call(node):
-                callee_name = get_calling_function_name(node)
-                callings.append((scope, callee_name))
+                callings.append((scope, node))
             elif is_func_def(node):
                 func_name = node.name
                 print('define function %s' % func_name)
                 scope.declare_function(func_name)
+            elif is_import(node):
+                for module_name in get_import_names(node):
+                    ext_module = ExternalModule(module_name)
+                    scope.add_symbol(module_name, ext_module)
 
-        for scope, callee_name in callings:
-            declare_scope = scope.find_declare_scope(callee_name)
-
-            if declare_scope:
-                callee_full_name = '%s:%s' % (
-                    declare_scope.full_name, callee_name
-                )
-            else:
-                callee_full_name = 'undefined(%s)' % callee_name
+        for scope, node in callings:
+            callee_smb = get_symbol(scope, node)
+            callee_full_name = callee_smb.full_name
 
             print('calling from %s to %s' % (
                 scope.caller_name, callee_full_name
             ))
+
+        print()
 
 
 def console_entry():
