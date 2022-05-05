@@ -6,6 +6,7 @@ from .parser import (
     iter_nodes_from_module,
     is_func_call, is_func_def,
     is_import, get_symbol, get_import_names,
+    is_export, get_export_names,
 )
 from .models import Module, Env, ExternalModule
 
@@ -37,6 +38,9 @@ def main(directory):
                 for module_name in get_import_names(node):
                     ext_module = ExternalModule(module_name)
                     scope.add_symbol(module_name, ext_module)
+            elif is_export(scope, node):
+                for name in get_export_names(node):
+                    print('export %s' % name)
 
         for scope, node in callings:
             callee_smb = get_symbol(scope, node)

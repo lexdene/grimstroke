@@ -2,7 +2,7 @@ import os
 
 import ast
 
-from .models import Scope
+from .models import Scope, ScopeType
 
 
 def iter_nodes_from_module(env, module):
@@ -89,3 +89,26 @@ def get_symbol(scope, node):
         raise ValueError(
             'cannot parse calling function node: %s' % ast.dump(node)
         )
+
+
+def is_export(scope, node):
+    if scope.type != ScopeType.module_body:
+        return False
+
+    if not isinstance(node, ast.Assign):
+        return False
+
+    if len(node.targets) != 1:
+        return False
+
+    target = node.targets[0]
+    target_name = target.id
+    if target_name != '__all__':
+        return False
+
+    return True
+
+
+def get_export_names(node):
+    names = ast.literal_eval(node.value)
+    return names
