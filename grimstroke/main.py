@@ -27,20 +27,21 @@ def main(directory):
     for m in modules:
         print(m)
         callings = []
+        export_names = []
         for scope, node in iter_nodes_from_module(env, m):
             if is_func_call(node):
                 callings.append((scope, node))
             elif is_func_def(node):
                 func_name = node.name
-                print('define function %s' % func_name)
-                scope.declare_function(func_name)
+                smb = scope.declare_function(func_name)
+                print('define function %s' % smb.full_name)
             elif is_import(node):
                 for module_name in get_import_names(node):
                     ext_module = ExternalModule(module_name)
                     scope.add_symbol(module_name, ext_module)
             elif is_export(scope, node):
                 for name in get_export_names(node):
-                    print('export %s' % name)
+                    export_names.append((scope, name))
 
         for scope, node in callings:
             callee_smb = get_symbol(scope, node)
@@ -49,6 +50,10 @@ def main(directory):
             print('calling from %s to %s' % (
                 scope.caller_name, callee_full_name
             ))
+
+        for scope, name in export_names:
+            smb = scope.find_symbol(name)
+            print('export %s' % smb.full_name)
 
         print()
 

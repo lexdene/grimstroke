@@ -61,6 +61,7 @@ class Scope:
     def declare_function(self, name: str):
         smb = Symbol(name=name, scope=self)
         self.add_symbol(name, smb)
+        return smb
 
     def find_symbol(self, name: str):
         if name in self._symbols:
