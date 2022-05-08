@@ -1,5 +1,7 @@
 import asyncio
 
+__all__ = ['bar']
+
 
 async def foo():
     await asyncio.sleep(1)

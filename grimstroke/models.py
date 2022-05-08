@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, deque
 from enum import Enum
 from functools import cached_property
 
@@ -44,7 +44,42 @@ class Env:
 
 
 class Collector:
-    pass
+    def __init__(self):
+        self.nodes = []
+        self.edges = {}
+        self.exported_nodes = []
+
+    def add_node(self, name: str):
+        self.nodes.append(name)
+
+    def add_edge(self, from_name: str, to_name: str):
+        if from_name not in self.edges:
+            self.edges[from_name] = set()
+
+        self.edges[from_name].add(to_name)
+
+    def export_node(self, name: str):
+        self.exported_nodes.append(name)
+
+    def get_useless_nodes(self):
+        queue = deque()
+        visited = set()
+
+        for name in self.exported_nodes:
+            visited.add(name)
+            queue.append(name)
+
+        while queue:
+            from_name = queue.popleft()
+
+            for to_name in self.edges.get(from_name, []):
+                if to_name not in visited:
+                    visited.add(to_name)
+                    queue.append(to_name)
+
+        for name in self.nodes:
+            if name not in visited:
+                yield name
 
 
 class Scope:

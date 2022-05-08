@@ -1,3 +1,6 @@
+__all__ = ['scope_function']
+
+
 def foo():
     pass
 

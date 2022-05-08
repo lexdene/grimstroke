@@ -8,7 +8,7 @@ from .parser import (
     is_import, get_symbol, get_import_names,
     is_export, get_export_names,
 )
-from .models import Module, Env, ExternalModule
+from .models import Module, Env, ExternalModule, Collector, Scope
 
 
 def iter_modules(env):
@@ -22,6 +22,7 @@ def iter_modules(env):
 
 def main(directory):
     env = Env(directory)
+    col = Collector()
 
     modules = list(iter_modules(env))
     for m in modules:
@@ -34,6 +35,7 @@ def main(directory):
             elif is_func_def(node):
                 func_name = node.name
                 smb = scope.declare_function(func_name)
+                col.add_node(smb.full_name)
                 print('define function %s' % smb.full_name)
             elif is_import(node):
                 for module_name in get_import_names(node):
@@ -50,12 +52,21 @@ def main(directory):
             print('calling from %s to %s' % (
                 scope.caller_name, callee_full_name
             ))
+            col.add_edge(scope.caller_name, callee_full_name)
 
         for scope, name in export_names:
             smb = scope.find_symbol(name)
             print('export %s' % smb.full_name)
+            col.export_node(smb.full_name)
+
+        module_scope = Scope.create_from_module(m)
+        col.export_node(module_scope.caller_name)
 
         print()
+
+    print('useless nodes:')
+    for n in col.get_useless_nodes():
+        print(n)
 
 
 def console_entry():
