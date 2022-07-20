@@ -2,8 +2,6 @@ from collections import namedtuple, deque
 from enum import Enum
 from functools import cached_property
 
-from .utils import remove_suffix
-
 CallingRelation = namedtuple(
     'CallingRelation',
     ['from_func', 'to_func']
@@ -15,7 +13,8 @@ ScopeType = Enum(
 
 
 class Module:
-    def __init__(self, path):
+    def __init__(self, name: str, path: str):
+        self.name = name
         self.path = path
 
     def __repr__(self):
@@ -131,10 +130,8 @@ class Scope:
 
     @classmethod
     def create_from_module(cls, module: Module):
-        name = remove_suffix(module.path, '.py').replace('/', '.')
-
         return cls(
-            name=name,
+            name=module.name,
             type=ScopeType.module_body,
         )
 
