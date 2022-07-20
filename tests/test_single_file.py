@@ -1,8 +1,7 @@
 import os
-import sys
 from unittest import TestCase
 
-from grimstroke.main import main
+from grimstroke.main import collect
 
 
 class TestSingleFile(TestCase):
@@ -11,7 +10,8 @@ class TestSingleFile(TestCase):
             'examples/single_file',
             name + '.py'
         )
-        return main(path)
+        col = collect(path)
+        return list(col.get_useless_nodes())
 
     def test_call_by_module(self):
         r = self._get_useless_functions('call_by_module')

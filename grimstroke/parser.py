@@ -1,5 +1,3 @@
-import os
-
 import ast
 
 from .models import Scope, ScopeType
@@ -7,12 +5,11 @@ from .models import Scope, ScopeType
 
 def iter_nodes_from_module(env, module):
     top_scope = Scope.create_from_module(module)
-    tree = parse_module(env, module)
+    tree = parse_module(module.path)
     return iter_nodes(top_scope, tree)
 
 
-def parse_module(env, module):
-    path = os.path.join(env.directory, module.path)
+def parse_module(path):
     with open(path) as f:
         content = f.read()
 

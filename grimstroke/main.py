@@ -11,20 +11,30 @@ from .parser import (
 from .models import Module, Env, ExternalModule, Collector, Scope
 
 
-def iter_modules(env):
-    directory = env.directory
-    for root, dirs, filenames in os.walk(directory):
-        for filename in filenames:
-            if filename.endswith('.py'):
-                fullpath = os.path.join(root, filename)
-                yield Module(os.path.relpath(fullpath, directory))
+def make_module(path: str, base_dir: str = ''):
+    if base_dir:
+        raise NotImplementedError
+    else:
+        name = os.path.splitext(os.path.split(path)[1])[0]
+        return Module(name=name, path=path)
 
 
-def main(directory):
-    env = Env(directory)
+def iter_modules(path):
+    if os.path.isfile(path):
+        yield make_module(path)
+    else:
+        for root, dirs, filenames in os.walk(path):
+            for filename in filenames:
+                if filename.endswith('.py'):
+                    fullpath = os.path.join(root, filename)
+                    yield make_module(fullpath, path)
+
+
+def collect(path):
+    env = Env(path)
     col = Collector()
 
-    modules = list(iter_modules(env))
+    modules = list(iter_modules(path))
     for m in modules:
         print(m)
         callings = []
@@ -64,6 +74,11 @@ def main(directory):
 
         print()
 
+    return col
+
+
+def main(path):
+    col = collect(path)
     print('useless nodes:')
     for n in col.get_useless_nodes():
         print(n)
@@ -76,5 +91,5 @@ def console_entry():
 
 def parse_args():
     parser = ArgumentParser(description='Grimstroke')
-    parser.add_argument('directory')
+    parser.add_argument('path')
     return parser.parse_args()
