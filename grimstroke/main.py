@@ -6,6 +6,7 @@ from .parser import (
     iter_nodes_from_module,
     is_func_call, is_func_def,
     is_import, get_symbol, get_import_names,
+    is_import_from, get_import_from_names,
     is_export, get_export_names,
 )
 from .models import Module, Env, ExternalModule, Collector, Scope
@@ -13,7 +14,9 @@ from .models import Module, Env, ExternalModule, Collector, Scope
 
 def make_module(path: str, base_dir: str = ''):
     if base_dir:
-        raise NotImplementedError
+        rel_path = os.path.relpath(path, base_dir)
+        name = os.path.splitext(rel_path)[0].replace('/', '.')
+        return Module(name=name, path=path)
     else:
         name = os.path.splitext(os.path.split(path)[1])[0]
         return Module(name=name, path=path)
@@ -51,6 +54,12 @@ def collect(path):
                 for module_name in get_import_names(node):
                     ext_module = ExternalModule(module_name)
                     scope.add_symbol(module_name, ext_module)
+            elif is_import_from(node):
+                for module_name, names in get_import_from_names(node):
+                    ext_module = ExternalModule(module_name)
+                    for name in names:
+                        smb = ext_module.find_symbol(name)
+                        scope.add_symbol(name, smb)
             elif is_export(scope, node):
                 for name in get_export_names(node):
                     export_names.append((scope, name))
