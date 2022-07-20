@@ -71,6 +71,21 @@ def get_import_names(node):
     ]
 
 
+def is_import_from(node):
+    return isinstance(node, ast.ImportFrom)
+
+
+def get_import_from_names(node):
+    return [
+        (
+            node.module,
+            [
+                a.name for a in node.names
+            ]
+        )
+    ]
+
+
 def get_symbol(scope, node):
     func = node.func
 
