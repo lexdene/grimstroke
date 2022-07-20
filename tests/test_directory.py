@@ -13,5 +13,5 @@ class TestDirectory(TestCase):
     def test_simple_project(self):
         self.assertEqual(
             self._get_useless_functions('simple_project'),
-            ['hello:hello','world:never_called_function']
+            ['hello:hello', 'world:never_called_function']
         )
