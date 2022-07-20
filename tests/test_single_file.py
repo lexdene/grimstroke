@@ -17,3 +17,27 @@ class TestSingleFile(TestCase):
         r = self._get_useless_functions('call_by_module')
 
         self.assertEqual(r, ['call_by_module:bar'])
+
+    def test_async_functions(self):
+        self.assertEqual(
+            self._get_useless_functions('async_functions'),
+            []
+        )
+
+    def test_bin_op(self):
+        self.assertEqual(
+            self._get_useless_functions('bin_op'),
+            []
+        )
+
+    def test_export_by_all(self):
+        self.assertEqual(
+            self._get_useless_functions('export_by_all'),
+            ['export_by_all:baz']
+        )
+
+    def test_nested_func(self):
+        self.assertEqual(
+            self._get_useless_functions('nested_func'),
+            ['nested_func:foo']
+        )
