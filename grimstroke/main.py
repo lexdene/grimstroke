@@ -115,8 +115,13 @@ def collect(path):
     return col
 
 
-def main(path, output_filter=None, output_format=None):
+def main(path, entries=None, output_filter=None, output_format=None):
     col = collect(path)
+
+    if entries:
+        for n in col.nodes:
+            if _match_entries(n, entries):
+                col.export_node(n)
 
     formatter = get_formatter(output_format)
 
@@ -124,6 +129,14 @@ def main(path, output_filter=None, output_format=None):
     for n in col.get_useless_nodes():
         if match_qual_name(n, output_filter):
             formatter.output(col, n)
+
+
+def _match_entries(name, entries):
+    for entry in entries:
+        if match_qual_name(name, entry):
+            return True
+
+    return False
 
 
 def console_entry():
@@ -134,6 +147,7 @@ def console_entry():
 def parse_args():
     parser = ArgumentParser(description='Grimstroke')
     parser.add_argument('path')
+    parser.add_argument('--entry', action='append', dest='entries')
     parser.add_argument('--output-filter')
     parser.add_argument('--output-format', default='simple')
     return parser.parse_args()
