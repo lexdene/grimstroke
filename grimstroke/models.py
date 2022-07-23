@@ -45,17 +45,21 @@ class Env:
 class Collector:
     def __init__(self):
         self.nodes = []
-        self.edges = {}
+        self.forward_edges = {}
+        self.backward_edges = {}
         self.exported_nodes = []
 
     def add_node(self, name: str):
         self.nodes.append(name)
 
     def add_edge(self, from_name: str, to_name: str):
-        if from_name not in self.edges:
-            self.edges[from_name] = set()
+        if from_name not in self.forward_edges:
+            self.forward_edges[from_name] = set()
+        self.forward_edges[from_name].add(to_name)
 
-        self.edges[from_name].add(to_name)
+        if to_name not in self.backward_edges:
+            self.backward_edges[to_name] = set()
+        self.backward_edges[to_name].add(from_name)
 
     def export_node(self, name: str):
         self.exported_nodes.append(name)
@@ -71,7 +75,7 @@ class Collector:
         while queue:
             from_name = queue.popleft()
 
-            for to_name in self.edges.get(from_name, []):
+            for to_name in self.forward_edges.get(from_name, []):
                 if to_name not in visited:
                     visited.add(to_name)
                     queue.append(to_name)
@@ -79,6 +83,12 @@ class Collector:
         for name in self.nodes:
             if name not in visited:
                 yield name
+
+    def get_callers(self, name: str) -> list:
+        if name in self.backward_edges:
+            return list(self.backward_edges[name])
+
+        return []
 
 
 class Scope:

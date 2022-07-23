@@ -15,6 +15,7 @@ from .models import (
     Module, Env, ExternalModule, Collector, Scope,
     match_qual_name,
 )
+from .formatter import get_formatter
 
 logger = logging.getLogger(__name__)
 
@@ -114,12 +115,15 @@ def collect(path):
     return col
 
 
-def main(path, output_filter=None):
+def main(path, output_filter=None, output_format=None):
     col = collect(path)
+
+    formatter = get_formatter(output_format)
+
     print('useless nodes:')
     for n in col.get_useless_nodes():
         if match_qual_name(n, output_filter):
-            print(n)
+            formatter.output(col, n)
 
 
 def console_entry():
@@ -131,4 +135,5 @@ def parse_args():
     parser = ArgumentParser(description='Grimstroke')
     parser.add_argument('path')
     parser.add_argument('--output-filter')
+    parser.add_argument('--output-format', default='simple')
     return parser.parse_args()
