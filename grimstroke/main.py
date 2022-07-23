@@ -43,7 +43,7 @@ def collect_node(scope, node):
     elif is_func_def(node):
         func_name = node.name
         smb = scope.declare_function(func_name)
-        yield Action.add_node, smb.full_name
+        yield Action.add_node, smb.qual_name
     elif is_import(node):
         for module_name in get_import_names(node):
             ext_module = ExternalModule(module_name)
@@ -87,12 +87,12 @@ def collect(path):
         for scope, node in callings:
             try:
                 callee_smb = get_symbol(scope, node)
-                callee_full_name = callee_smb.full_name
-                col.add_edge(scope.caller_name, callee_full_name)
+                callee_qual_name = callee_smb.qual_name
+                col.add_edge(scope.caller_name, callee_qual_name)
             except AttributeError:
                 logger.debug(
                     'get symbol fail. %s.%s at %s:%d',
-                    scope.full_name, dump_node(node), m.path, node.lineno
+                    scope.qual_name, dump_node(node), m.path, node.lineno
                 )
 
         for scope, name in export_names:
@@ -100,10 +100,10 @@ def collect(path):
             if not smb:
                 logger.debug(
                     'cannot get symbol. %s.%s',
-                    scope.full_name, name
+                    scope.qual_name, name
                 )
                 continue
-            col.export_node(smb.full_name)
+            col.export_node(smb.qual_name)
 
         module_scope = Scope.create_from_module(m)
         col.export_node(module_scope.caller_name)

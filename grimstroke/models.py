@@ -28,7 +28,7 @@ class ExternalModule:
         self._ref_symbols = {}
 
     @cached_property
-    def full_name(self):
+    def qual_name(self):
         return self.name
 
     def find_symbol(self, name: str):
@@ -105,21 +105,21 @@ class Scope:
             return self.outer_scope.find_symbol(name)
 
     @cached_property
-    def full_name(self):
+    def qual_name(self):
         if self.outer_scope:
-            return self.outer_scope.full_name + ':' + self.name
+            return self.outer_scope.qual_name + ':' + self.name
 
         return self.name
 
     @cached_property
     def caller_name(self):
         if self.type == ScopeType.module_body:
-            return self.full_name + ':(global)'
+            return self.qual_name + ':(global)'
         else:
-            return self.full_name
+            return self.qual_name
 
     def __str__(self):
-        return '<Scope %s>' % self.full_name
+        return '<Scope %s>' % self.qual_name
 
     def create_function_scope(self, name):
         return Scope(
@@ -142,5 +142,5 @@ class Symbol:
         self.scope = scope
 
     @cached_property
-    def full_name(self):
-        return '%s:%s' % (self.scope.full_name, self.name)
+    def qual_name(self):
+        return '%s:%s' % (self.scope.qual_name, self.name)
