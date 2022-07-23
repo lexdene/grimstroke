@@ -1,6 +1,12 @@
 import ast
+from enum import Enum
 
 from .models import Scope, ScopeType
+
+Action = Enum(
+    'Action',
+    ['add_node', 'add_edge', 'export_node'],
+)
 
 
 def iter_nodes_from_module(env, module):
@@ -32,10 +38,13 @@ def dump_node(node):
     if isinstance(node, ast.Module):
         return node
 
+    if isinstance(node, ast.Name):
+        return node.id
+
     if isinstance(node, ast.Assign):
         return '%s(%s)' % (
             node.__class__.__name__,
-            ', '.join([n.id for n in node.targets])
+            ', '.join([dump_node(n) for n in node.targets])
         )
 
     if isinstance(node, ast.Import):
@@ -97,10 +106,6 @@ def get_symbol(scope, node):
         sub_scope = scope.find_symbol(name)
         sub_name = func.attr
         return sub_scope.find_symbol(sub_name)
-    else:
-        raise ValueError(
-            'cannot parse calling function node: %s' % ast.dump(node)
-        )
 
 
 def is_export(scope, node):
