@@ -30,11 +30,33 @@ def make_module(path: str, base_dir: str = ''):
         return Module(name=name, path=path)
 
 
-def iter_modules(path):
+def match_path(path, condition):
+    if path == condition:
+        return True
+
+    if path.startswith(condition + '/'):
+        return True
+
+    return False
+
+
+def match_paths(path, conditions):
+    for cond in conditions:
+        if match_path(path, cond):
+            return True
+
+    return False
+
+
+def iter_modules(path, input_excludes=None):
     if os.path.isfile(path):
         yield make_module(path)
     else:
         for root, dirs, filenames in os.walk(path):
+            rel_dir_name = os.path.relpath(root, path)
+            if input_excludes and match_paths(rel_dir_name, input_excludes):
+                continue
+
             for filename in filenames:
                 if filename.endswith('.py'):
                     fullpath = os.path.join(root, filename)
@@ -63,12 +85,11 @@ def collect_node(scope, node):
             yield Action.export_node, (scope, name)
 
 
-def collect(path):
+def collect(path, input_excludes=None):
     env = Env(path)
     col = Collector()
 
-    modules = list(iter_modules(path))
-    for m in modules:
+    for m in iter_modules(path, input_excludes=input_excludes):
         callings = []
         export_names = []
         for scope, node in iter_nodes_from_module(env, m):
@@ -115,8 +136,12 @@ def collect(path):
     return col
 
 
-def main(path, entries=None, output_filter=None, output_format=None):
-    col = collect(path)
+def main(
+    path,
+    entries=None, input_excludes=None,
+    output_filter=None, output_format=None
+):
+    col = collect(path, input_excludes=input_excludes)
 
     if entries:
         for n in col.nodes:
@@ -148,6 +173,9 @@ def parse_args():
     parser = ArgumentParser(description='Grimstroke')
     parser.add_argument('path')
     parser.add_argument('--entry', action='append', dest='entries')
+    parser.add_argument(
+        '--input-exclude', action='append', dest='input_excludes'
+    )
     parser.add_argument('--output-filter')
     parser.add_argument('--output-format', default='simple')
     return parser.parse_args()
