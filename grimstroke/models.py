@@ -144,3 +144,14 @@ class Symbol:
     @cached_property
     def qual_name(self):
         return '%s:%s' % (self.scope.qual_name, self.name)
+
+
+def match_qual_name(name, condition):
+    if not condition:
+        return True
+
+    for suffix in '.:':
+        if name.startswith(condition + suffix):
+            return True
+
+    return False
