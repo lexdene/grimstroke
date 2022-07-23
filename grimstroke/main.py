@@ -2,19 +2,10 @@ import os
 import logging
 
 from argparse import ArgumentParser
+from pkg_resources import iter_entry_points
 
-from .parser import (
-    iter_nodes_from_module,
-    is_func_call, is_func_def,
-    is_import, get_symbol, get_import_names,
-    is_import_from, get_import_from_names,
-    is_export, get_export_names,
-    dump_node, Action,
-)
-from .models import (
-    Module, Env, ExternalModule, Collector, Scope,
-    match_qual_name,
-)
+from .parser import Action
+from .models import Module, Collector, match_qual_name, Scope
 from .formatter import get_formatter
 
 logger = logging.getLogger(__name__)
@@ -48,90 +39,63 @@ def match_paths(path, conditions):
     return False
 
 
-def iter_modules(path, input_excludes=None):
+def iter_modules(path, excludes=None, allow_exts=None):
     if os.path.isfile(path):
         yield make_module(path)
     else:
         for root, dirs, filenames in os.walk(path):
             rel_dir_name = os.path.relpath(root, path)
-            if input_excludes and match_paths(rel_dir_name, input_excludes):
+            if excludes and match_paths(rel_dir_name, excludes):
                 continue
 
             for filename in filenames:
-                if filename.endswith('.py'):
-                    fullpath = os.path.join(root, filename)
-                    yield make_module(fullpath, path)
+                _, ext = os.path.splitext(filename)
+                if allow_exts and ext not in allow_exts:
+                    continue
+
+                fullpath = os.path.join(root, filename)
+                yield make_module(fullpath, path)
 
 
-def collect_node(scope, node):
-    if is_func_call(node):
-        yield Action.add_edge, (scope, node)
-    elif is_func_def(node):
-        func_name = node.name
-        smb = scope.declare_function(func_name)
-        yield Action.add_node, smb.qual_name
-    elif is_import(node):
-        for module_name in get_import_names(node):
-            ext_module = ExternalModule(module_name)
-            scope.add_symbol(module_name, ext_module)
-    elif is_import_from(node):
-        for module_name, names in get_import_from_names(node):
-            ext_module = ExternalModule(module_name)
-            for name in names:
-                smb = ext_module.find_symbol(name)
-                scope.add_symbol(name, smb)
-    elif is_export(scope, node):
-        for name in get_export_names(node):
-            yield Action.export_node, (scope, name)
+def get_parser_cls_map():
+    r = {}
+
+    for ep in iter_entry_points('grimstroke.parsers'):
+        parser_cls = ep.load()
+        ext = '.' + parser_cls.ext
+        r[ext] = parser_cls
+
+    return r
+
+
+def get_parser(pcm, module):
+    _, ext = os.path.splitext(module.path)
+    return pcm[ext]()
 
 
 def collect(path, input_excludes=None):
-    env = Env(path)
     col = Collector()
 
-    for m in iter_modules(path, input_excludes=input_excludes):
-        callings = []
-        export_names = []
-        for scope, node in iter_nodes_from_module(env, m):
-            try:
-                for action, ele in collect_node(scope, node):
-                    if action == Action.add_node:
-                        col.add_node(ele)
-                    elif action == Action.add_edge:
-                        callings.append(ele)
-                    elif action == Action.export_node:
-                        export_names.append(ele)
-                    else:
-                        raise ValueError('no such action: %s' % action)
-            except AttributeError:
-                logger.debug(
-                    'collect node fail, %s at %s:%d',
-                    dump_node(node), m.path, node.lineno
-                )
+    parser_cls_map = get_parser_cls_map()
+    input_allow_exts = list(parser_cls_map.keys())
 
-        for scope, node in callings:
-            try:
-                callee_smb = get_symbol(scope, node)
-                callee_qual_name = callee_smb.qual_name
-                col.add_edge(scope.caller_name, callee_qual_name)
-            except AttributeError:
-                logger.debug(
-                    'get symbol fail. %s.%s at %s:%d',
-                    scope.qual_name, dump_node(node), m.path, node.lineno
-                )
-
-        for scope, name in export_names:
-            smb = scope.find_symbol(name)
-            if not smb:
-                logger.debug(
-                    'cannot get symbol. %s.%s',
-                    scope.qual_name, name
-                )
-                continue
-            col.export_node(smb.qual_name)
+    for m in iter_modules(
+        path,
+        excludes=input_excludes, allow_exts=input_allow_exts
+    ):
+        parser = get_parser(parser_cls_map, m)
+        for action, item in parser.parse(m):
+            if action == Action.add_node:
+                col.add_node(item)
+            elif action == Action.add_edge:
+                col.add_edge(*item)
+            elif action == Action.export_node:
+                col.export_node(item)
+            else:
+                raise ValueError('no such action: %s' % action)
 
         module_scope = Scope.create_from_module(m)
-        col.export_node(module_scope.caller_name)
+        col.add_node(module_scope.caller_name)
 
     return col
 
