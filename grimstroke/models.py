@@ -37,11 +37,6 @@ class ExternalModule:
         return smb
 
 
-class Env:
-    def __init__(self, directory):
-        self.directory = directory
-
-
 class Collector:
     def __init__(self):
         self.nodes = []
