@@ -11,7 +11,10 @@ from .parser import (
     is_export, get_export_names,
     dump_node, Action,
 )
-from .models import Module, Env, ExternalModule, Collector, Scope
+from .models import (
+    Module, Env, ExternalModule, Collector, Scope,
+    match_qual_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,11 +114,12 @@ def collect(path):
     return col
 
 
-def main(path):
+def main(path, output_filter=None):
     col = collect(path)
     print('useless nodes:')
     for n in col.get_useless_nodes():
-        print(n)
+        if match_qual_name(n, output_filter):
+            print(n)
 
 
 def console_entry():
@@ -126,4 +130,5 @@ def console_entry():
 def parse_args():
     parser = ArgumentParser(description='Grimstroke')
     parser.add_argument('path')
+    parser.add_argument('--output-filter')
     return parser.parse_args()
