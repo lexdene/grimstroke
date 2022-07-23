@@ -60,7 +60,7 @@ def iter_modules(path, excludes=None, allow_exts=None):
 def get_parser_cls_map():
     r = {}
 
-    for ep in iter_entry_points("grimstroke.parsers"):
+    for ep in iter_entry_points('grimstroke.parsers'):
         parser_cls = ep.load()
         ext = '.' + parser_cls.ext
         r[ext] = parser_cls
