@@ -1,4 +1,5 @@
 import os
+import logging
 
 from argparse import ArgumentParser
 
@@ -8,8 +9,11 @@ from .parser import (
     is_import, get_symbol, get_import_names,
     is_import_from, get_import_from_names,
     is_export, get_export_names,
+    dump_node, Action,
 )
 from .models import Module, Env, ExternalModule, Collector, Scope
+
+logger = logging.getLogger(__name__)
 
 
 def make_module(path: str, base_dir: str = ''):
@@ -33,55 +37,76 @@ def iter_modules(path):
                     yield make_module(fullpath, path)
 
 
+def collect_node(scope, node):
+    if is_func_call(node):
+        yield Action.add_edge, (scope, node)
+    elif is_func_def(node):
+        func_name = node.name
+        smb = scope.declare_function(func_name)
+        yield Action.add_node, smb.full_name
+    elif is_import(node):
+        for module_name in get_import_names(node):
+            ext_module = ExternalModule(module_name)
+            scope.add_symbol(module_name, ext_module)
+    elif is_import_from(node):
+        for module_name, names in get_import_from_names(node):
+            ext_module = ExternalModule(module_name)
+            for name in names:
+                smb = ext_module.find_symbol(name)
+                scope.add_symbol(name, smb)
+    elif is_export(scope, node):
+        for name in get_export_names(node):
+            yield Action.export_node, (scope, name)
+
+
 def collect(path):
     env = Env(path)
     col = Collector()
 
     modules = list(iter_modules(path))
     for m in modules:
-        print(m)
         callings = []
         export_names = []
         for scope, node in iter_nodes_from_module(env, m):
-            if is_func_call(node):
-                callings.append((scope, node))
-            elif is_func_def(node):
-                func_name = node.name
-                smb = scope.declare_function(func_name)
-                col.add_node(smb.full_name)
-                print('define function %s' % smb.full_name)
-            elif is_import(node):
-                for module_name in get_import_names(node):
-                    ext_module = ExternalModule(module_name)
-                    scope.add_symbol(module_name, ext_module)
-            elif is_import_from(node):
-                for module_name, names in get_import_from_names(node):
-                    ext_module = ExternalModule(module_name)
-                    for name in names:
-                        smb = ext_module.find_symbol(name)
-                        scope.add_symbol(name, smb)
-            elif is_export(scope, node):
-                for name in get_export_names(node):
-                    export_names.append((scope, name))
+            try:
+                for action, ele in collect_node(scope, node):
+                    if action == Action.add_node:
+                        col.add_node(ele)
+                    elif action == Action.add_edge:
+                        callings.append(ele)
+                    elif action == Action.export_node:
+                        export_names.append(ele)
+                    else:
+                        raise ValueError('no such action: %s' % action)
+            except AttributeError:
+                logger.debug(
+                    'collect node fail, %s at %s:%d',
+                    dump_node(node), m.path, node.lineno
+                )
 
         for scope, node in callings:
-            callee_smb = get_symbol(scope, node)
-            callee_full_name = callee_smb.full_name
-
-            print('calling from %s to %s' % (
-                scope.caller_name, callee_full_name
-            ))
-            col.add_edge(scope.caller_name, callee_full_name)
+            try:
+                callee_smb = get_symbol(scope, node)
+                callee_full_name = callee_smb.full_name
+                col.add_edge(scope.caller_name, callee_full_name)
+            except AttributeError:
+                logger.debug(
+                    'get symbol fail. %s.%s at %s:%d',
+                    scope.full_name, dump_node(node), m.path, node.lineno
+                )
 
         for scope, name in export_names:
             smb = scope.find_symbol(name)
-            print('export %s' % smb.full_name)
+            if not smb:
+                logger.debug(
+                    'cannot get symbol. %s.%s',
+                    scope.full_name, name
+                )
+                continue
             col.export_node(smb.full_name)
 
         module_scope = Scope.create_from_module(m)
         col.export_node(module_scope.caller_name)
-
-        print()
 
     return col
 
